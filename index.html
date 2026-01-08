@@ -18,9 +18,8 @@
     .row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
     .pill { background:#eef2ff; color:#3730a3; font-weight:700; font-size:13px; padding:6px 12px; border-radius:999px; }
     .muted { opacity:.7; }
-    .hint { font-size:13px; line-height:1.45; }
 
-    input, select { padding:10px 12px; border-radius:12px; border:1px solid rgba(0,0,0,.15); font-size:14px; background:#fff; }
+    input, select { padding:10px 12px; border-radius:12px; border:1px solid rgba(0,0,0,.15); font-size:14px; }
     .btn { border:0; border-radius:12px; padding:10px 16px; font-weight:700; cursor:pointer; }
     .btn.primary { background:#111827; color:#fff; }
     .btn.ghost { background:#eef2ff; color:#3730a3; }
@@ -31,26 +30,12 @@
     .meta { font-size:13px; opacity:.9; }
     .meta div { margin:2px 0; }
 
-    .badge {
-      display:inline-block;
-      font-size:12px;
-      font-weight:700;
-      padding:4px 10px;
-      border-radius:999px;
-      background:#f3f4f6;
-      color:#111827;
-      margin-top:8px;
-    }
-
-    .ok { background:#ecfeff; border:1px solid rgba(8,145,178,.25); color:#155e75; padding:12px; border-radius:12px; margin-top:12px; }
-    .error { background:#fff1f2; border:1px solid rgba(190,18,60,.25); color:#9f1239; padding:12px; border-radius:12px; margin-top:12px; }
-
-    code { background:#111827; color:#fff; padding:2px 6px; border-radius:6px; }
     iframe { width:100%; height:1200px; border:0; border-radius:16px; }
   </style>
 </head>
 
 <body>
+
 <header>
   <div class="wrap">
     <h1>ร่วมงานกับเรา</h1>
@@ -59,20 +44,17 @@
 </header>
 
 <main>
+
   <section class="card">
     <div class="row" style="justify-content:space-between">
       <div>
         <span class="pill">ตำแหน่งว่าง</span>
-        <div class="muted hint">ดึงข้อมูลจากไฟล์ CSV/TSV ใน GitHub</div>
+        <div class="muted">ดึงข้อมูลจากไฟล์ CSV ใน GitHub</div>
       </div>
-      <button class="btn primary" onclick="document.getElementById('apply').scrollIntoView({behavior:'smooth'})">
-        สมัครงาน
-      </button>
     </div>
 
     <div class="row" style="margin-top:12px">
-      <input id="q" placeholder="ค้นหา (ตำแหน่ง/สาขา/รหัสสาขา/สถานะ)..." style="flex:1;min-width:240px">
-      <select id="filterStatus"><option value="">ทุกสถานะ</option></select>
+      <input id="q" placeholder="ค้นหา (ตำแหน่ง/สาขา)..." style="flex:1;min-width:240px">
       <select id="filterBranch"><option value="">ทุกสาขา</option></select>
       <button class="btn ghost" id="clearBtn">ล้างตัวกรอง</button>
     </div>
@@ -81,188 +63,122 @@
   <section class="card">
     <div id="summary" class="muted">กำลังโหลดข้อมูล...</div>
     <div id="jobs" class="grid"></div>
-    <div id="msg"></div>
-    <div id="debug" class="muted hint" style="margin-top:10px;"></div>
   </section>
 
   <section class="card" id="apply">
     <span class="pill">สมัครงาน</span>
     <p class="muted">กรอกแบบฟอร์มด้านล่างได้เลย</p>
-    <iframe src="https://forms.office.com/r/wabJfczd4Z" loading="lazy"></iframe>
+    <iframe id="applyFrame" loading="lazy"></iframe>
   </section>
+
 </main>
 
 <script>
 /* ================= CONFIG ================= */
-const CSV_FILE_NAME = "ประกาศตำแหน่งงานว่างสาขา.csv";
-const CSV_URL = "./" + encodeURI(CSV_FILE_NAME);
+const CSV_URL = "./" + encodeURI("ประกาศตำแหน่งงานว่างสาขา.csv");
 
-/* ================= UTIL ================= */
-const norm = s => (s||"")
-  .toLowerCase()
-  .replace(/\uFEFF/g,"")  // BOM
-  .replace(/\s+/g,"")
-  .replace(/[_-]/g,"");
+// 🔹 Microsoft Form (Base)
+const FORM_BASE = "https://forms.office.com/r/wabJfczd4Z";
 
-function detectDelimiter(text) {
-  // ใช้บรรทัดแรก (header) นับจำนวนตัวคั่นที่เป็นไปได้: tab, comma, semicolon
-  const firstLine = (text.split(/\r?\n/)[0] || "");
-  const tab   = (firstLine.match(/\t/g) || []).length;
-  const comma = (firstLine.match(/,/g)  || []).length;
-  const semi  = (firstLine.match(/;/g)  || []).length;
+// 🔹 ใส่ ID ของคำถามจาก pre-filled link
+// ตัวอย่าง: https://forms.office.com/r/xxxx?entry.123=...
+const FORM_FIELD_POSITION = "entry.111111111"; // ตำแหน่งที่รับสมัคร
+const FORM_FIELD_BRANCH   = "entry.222222222"; // ชื่อสาขา
 
-  // เลือกตัวที่มีจำนวนมากสุด
-  if (tab >= comma && tab >= semi && tab > 0) return "\t";
-  if (semi > comma) return ";";
-  return ",";
+/* ================= CSV ================= */
+function detectDelimiter(t){
+  const h=(t.split(/\r?\n/)[0]||"");
+  const tab=(h.match(/\t/g)||[]).length, comma=(h.match(/,/g)||[]).length;
+  return tab>comma ? "\t" : ",";
+}
+function parse(t,d){
+  const r=[]; let row=[],c="",q=false;
+  for(let i=0;i<t.length;i++){
+    const x=t[i],n=t[i+1];
+    if(x=='"'){ if(q&&n=='"'){c+='"';i++;} else q=!q; continue;}
+    if(!q&&x==d){ row.push(c.trim()); c=""; continue;}
+    if(!q&&(x=='\n'||x=='\r')){
+      if(x=='\r'&&n=='\n')i++;
+      row.push(c.trim()); if(row.some(v=>v))r.push(row);
+      row=[]; c=""; continue;
+    }
+    c+=x;
+  }
+  if(c||row.length){ row.push(c.trim()); if(row.some(v=>v))r.push(row);}
+  return r;
 }
 
-function parseDelimited(text, delimiter) {
-  // Parser แบบรองรับ quoted fields พื้นฐาน ใช้ได้กับ , ; และ \t
-  const rows = [];
-  let row=[], cur="", inQ=false;
-
-  for (let i=0;i<text.length;i++) {
-    const c=text[i], n=text[i+1];
-
-    if (c === '"') {
-      if (inQ && n === '"') { cur+='"'; i++; }
-      else inQ = !inQ;
-      continue;
-    }
-
-    if (!inQ && c === delimiter) { row.push(cur.trim()); cur=""; continue; }
-
-    if (!inQ && (c === '\n' || c === '\r')) {
-      if (c === '\r' && n === '\n') i++;
-      row.push(cur.trim());
-      if (row.some(v=>v.length>0)) rows.push(row);
-      row=[]; cur=""; continue;
-    }
-
-    cur += c;
-  }
-
-  if (cur.length || row.length) {
-    row.push(cur.trim());
-    if (row.some(v=>v.length>0)) rows.push(row);
-  }
-  return rows;
-}
-
-function headerIndex(headers) {
-  const map={};
-  headers.forEach((h,i)=>map[norm(h)]=i);
-  const pick = arr => {
-    for (const a of arr) {
-      const k = norm(a);
-      if (k in map) return map[k];
-    }
-    return -1;
-  };
-
-  // *** MAP ตาม header ของคุณ + เผื่อชื่อใกล้เคียง ***
+/* ================= MAP ================= */
+const norm=s=>(s||"").replace(/\s+/g,"").toLowerCase();
+function headerIndex(h){
+  const m={}; h.forEach((x,i)=>m[norm(x)]=i);
+  const pick=a=>a.find(x=>norm(x)in m)!=null?m[norm(a.find(x=>norm(x)in m))]:-1;
   return {
-    branchCode: pick(["รหัสสาขา","branchcode","storecode","code"]),
-    branchName: pick(["ชื่อสาขา","branchname","storename","branch","สาขา"]),
-    jobTitle:   pick(["ตำแหน่งงาน","position","jobtitle","jobname","ตำแหน่ง","ตำแหน่งที่รับสมัคร"]),
-    jobStatus:  pick(["สถานะตำแหน่งงาน","status","jobstatus","สถานะ"]),
-    recruitPos: pick(["ตำแหน่งที่รับสมัคร","recruitposition","applyfor","ตำแหน่งรับสมัคร","ตำแหน่งสมัคร"]),
+    position: pick(["ตำแหน่งที่รับสมัคร"]),
+    branch:   pick(["ชื่อสาขา"])
   };
 }
 
-function uniq(arr) {
-  return [...new Set(arr.filter(Boolean))].sort((a,b)=>a.localeCompare(b,"th"));
-}
+let rows=[];
 
-let allRows = [];
-
-function render() {
-  const qv = q.value.toLowerCase().trim();
-  const sv = filterStatus.value;
-  const bv = filterBranch.value;
-
-  const list = allRows.filter(r=>{
-    const hay = `${r.branchCode} ${r.branchName} ${r.jobTitle} ${r.jobStatus} ${r.recruitPos}`.toLowerCase();
-    const okQ = !qv || hay.includes(qv);
-    const okS = !sv || r.jobStatus === sv;
-    const okB = !bv || r.branchName === bv;
-    return okQ && okS && okB;
+/* ================= RENDER ================= */
+function render(){
+  const qv=q.value.toLowerCase(), bv=filterBranch.value;
+  const list=rows.filter(r=>{
+    return (!qv||(`${r.position} ${r.branch}`).toLowerCase().includes(qv))
+      &&(!bv||r.branch===bv);
   });
 
-  summary.textContent = `พบ ${list.length} ตำแหน่ง (จากทั้งหมด ${allRows.length})`;
+  summary.textContent=`พบ ${list.length} ตำแหน่ง (จากทั้งหมด ${rows.length})`;
 
-  jobs.innerHTML = list.map(r=>`
+  jobs.innerHTML=list.map(r=>`
     <div class="job">
-      <h3>${r.jobTitle || r.recruitPos || "-"}</h3>
+      <h3>${r.position}</h3>
       <div class="meta">
-        ${r.branchName ? `<div><b>สาขา:</b> ${r.branchName}</div>` : ""}
-        ${r.branchCode ? `<div><b>รหัสสาขา:</b> ${r.branchCode}</div>` : ""}
-        ${r.recruitPos ? `<div><b>ตำแหน่งที่รับสมัคร:</b> ${r.recruitPos}</div>` : ""}
+        <div>สาขา: ${r.branch}</div>
       </div>
-      ${r.jobStatus ? `<div class="badge">สถานะ: ${r.jobStatus}</div>` : ""}
-      <div style="margin-top:12px">
-        <button class="btn primary" onclick="document.getElementById('apply').scrollIntoView({behavior:'smooth'})">
-          สมัครตำแหน่งนี้
-        </button>
-      </div>
+      <button class="btn primary" onclick="applyJob('${r.position}','${r.branch}')">
+        สมัครตำแหน่งนี้
+      </button>
     </div>
   `).join("");
 }
 
-async function loadData() {
-  try {
-    const res = await fetch(CSV_URL + "?ts=" + Date.now(), { cache:"no-store" });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+function applyJob(position, branch){
+  const url =
+    FORM_BASE + "?"
+    + FORM_FIELD_POSITION + "=" + encodeURIComponent(position) + "&"
+    + FORM_FIELD_BRANCH   + "=" + encodeURIComponent(branch);
 
-    const text = await res.text();
-    const delimiter = detectDelimiter(text);
-    const rows = parseDelimited(text, delimiter);
-    if (!rows.length) throw new Error("ไฟล์ว่าง หรืออ่านไม่ออก");
-
-    const headers = rows[0];
-    const idx = headerIndex(headers);
-
-    debug.innerHTML =
-      `ไฟล์: <code>${CSV_FILE_NAME}</code> | ตัวคั่น: <code>${delimiter === "\t" ? "\\t (TAB)" : delimiter}</code><br>` +
-      `หัวคอลัมน์ที่พบ: <code>${headers.join(" | ")}</code><br>` +
-      `mapping: รหัสสาขา=${idx.branchCode}, ชื่อสาขา=${idx.branchName}, ตำแหน่งงาน=${idx.jobTitle}, สถานะ=${idx.jobStatus}, ตำแหน่งที่รับสมัคร=${idx.recruitPos}`;
-
-    if (idx.branchName === -1 && idx.jobTitle === -1 && idx.recruitPos === -1) {
-      throw new Error("จับคอลัมน์หลักไม่เจอ (ชื่อสาขา/ตำแหน่งงาน/ตำแหน่งที่รับสมัคร) — ดูหัวคอลัมน์จาก Debug แล้วแจ้งผมได้");
-    }
-
-    allRows = rows.slice(1).map(r=>({
-      branchCode: idx.branchCode>=0 ? (r[idx.branchCode]||"") : "",
-      branchName: idx.branchName>=0 ? (r[idx.branchName]||"") : "",
-      jobTitle:   idx.jobTitle>=0   ? (r[idx.jobTitle]||"")   : "",
-      jobStatus:  idx.jobStatus>=0  ? (r[idx.jobStatus]||"")  : "",
-      recruitPos: idx.recruitPos>=0 ? (r[idx.recruitPos]||"") : "",
-    })).filter(x => x.branchName || x.jobTitle || x.recruitPos || x.jobStatus || x.branchCode);
-
-    // เติมตัวกรอง
-    filterStatus.innerHTML = `<option value="">ทุกสถานะ</option>`;
-    filterBranch.innerHTML = `<option value="">ทุกสาขา</option>`;
-    uniq(allRows.map(r=>r.jobStatus)).forEach(v=>filterStatus.insertAdjacentHTML("beforeend", `<option>${v}</option>`));
-    uniq(allRows.map(r=>r.branchName)).forEach(v=>filterBranch.insertAdjacentHTML("beforeend", `<option>${v}</option>`));
-
-    msg.innerHTML = `<div class="ok">โหลดข้อมูลตำแหน่งสำเร็จ</div>`;
-    render();
-  } catch (e) {
-    console.error(e);
-    summary.textContent = "โหลดข้อมูลไม่สำเร็จ";
-    jobs.innerHTML = "";
-    msg.innerHTML = `<div class="error"><b>โหลดข้อมูลจากไฟล์ไม่สำเร็จ</b><br><span class="hint">${e.message || e}</span></div>`;
-  }
+  applyFrame.src = url;
+  document.getElementById("apply").scrollIntoView({behavior:"smooth"});
 }
 
-/* ================= EVENTS ================= */
-q.oninput = render;
-filterStatus.onchange = render;
-filterBranch.onchange = render;
-clearBtn.onclick = ()=>{ q.value=""; filterStatus.value=""; filterBranch.value=""; render(); };
+/* ================= LOAD ================= */
+async function load(){
+  const res=await fetch(CSV_URL+"?t="+Date.now());
+  const txt=await res.text();
+  const d=detectDelimiter(txt);
+  const r=parse(txt,d);
+  const idx=headerIndex(r[0]);
 
-loadData();
+  rows=r.slice(1).map(x=>({
+    position:x[idx.position],
+    branch:x[idx.branch]
+  }));
+
+  [...new Set(rows.map(r=>r.branch))].forEach(b=>{
+    filterBranch.insertAdjacentHTML("beforeend",`<option>${b}</option>`);
+  });
+
+  render();
+}
+
+q.oninput=render;
+filterBranch.onchange=render;
+clearBtn.onclick=()=>{q.value="";filterBranch.value="";render();};
+
+load();
 </script>
 
 </body>
