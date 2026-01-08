@@ -5,57 +5,291 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>ร่วมงานกับเรา</title>
   <style>
-    :root { --max: 1040px; }
+    :root { --max: 1100px; }
     body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background:#f6f7fb; color:#111; }
-    header { padding:64px 20px; color:#fff; background: linear-gradient(120deg, #4f46e5, #6366f1); }
-    header .wrap { max-width: var(--max); margin: 0 auto; }
+    header { padding:64px 18px; color:#fff; background: linear-gradient(120deg, #4f46e5, #6366f1); }
+    header .wrap { max-width: var(--max); margin:0 auto; }
     header h1 { margin:0 0 8px; font-size: 40px; line-height: 1.1; }
     header p { margin:0; opacity:.95; font-size: 18px; }
 
-    main { max-width: var(--max); margin: 0 auto; padding: 28px 20px 60px; }
-    .card { background:#fff; border-radius: 16px; padding: 22px; box-shadow: 0 10px 30px rgba(0,0,0,.08); margin: 18px 0; }
-    .grid { display:grid; gap:14px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
-    .pill { display:inline-block; padding:8px 12px; border-radius: 999px; background:#eef2ff; color:#3730a3; font-weight:600; font-size:14px; }
+    main { max-width: var(--max); margin:0 auto; padding: 22px 18px 60px; }
+    .card { background:#fff; border-radius: 16px; padding: 18px; box-shadow: 0 10px 28px rgba(0,0,0,.08); margin: 14px 0; }
+    .row { display:flex; gap:12px; flex-wrap: wrap; align-items:center; }
+    .pill { display:inline-block; padding:8px 12px; border-radius: 999px; background:#eef2ff; color:#3730a3; font-weight:700; font-size:13px; }
+    .muted { opacity:.72; }
+    .grid { display:grid; gap:12px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+    .job { border: 1px solid rgba(0,0,0,.08); border-radius: 14px; padding: 14px; background:#fff; }
+    .job h3 { margin:0 0 6px; font-size: 18px; }
+    .job .meta { font-size: 13px; opacity: .8; margin: 0 0 10px; }
+    .job .meta div { margin: 2px 0; }
+    .btn { appearance:none; border:0; cursor:pointer; padding:10px 14px; border-radius: 12px; font-weight:700; }
+    .btn.primary { background:#111827; color:#fff; }
+    .btn.ghost { background:#eef2ff; color:#3730a3; }
+    input, select { padding:10px 12px; border-radius: 12px; border:1px solid rgba(0,0,0,.14); background:#fff; font-size: 14px; }
     iframe { width:100%; height: 1200px; border:0; border-radius: 16px; background:#fff; }
-    footer { opacity:.7; font-size: 13px; margin-top: 22px; text-align:center; }
+    footer { text-align:center; opacity:.7; font-size: 13px; padding: 12px 0 0; }
+    .error { background: #fff1f2; border: 1px solid rgba(190,18,60,.25); color:#9f1239; padding: 12px; border-radius: 14px; }
+    .hint { font-size: 13px; }
   </style>
 </head>
+
 <body>
   <header>
     <div class="wrap">
       <h1>ร่วมงานกับเรา</h1>
-      <p>มาร่วมเป็นส่วนหนึ่งกับทีมของเรา — สมัครได้ด้านล่าง (ไม่ต้องล็อกอิน)</p>
+      <p>ดูตำแหน่งว่าง และสมัครงานได้ทันที (ไม่ต้องล็อกอิน)</p>
     </div>
   </header>
 
   <main>
     <section class="card">
-      <span class="pill">Why join us</span>
-      <div class="grid" style="margin-top:14px;">
-        <div>• วัฒนธรรมทำงานเป็นทีม</div>
-        <div>• เรียนรู้และเติบโต</div>
-        <div>• สวัสดิการและความยืดหยุ่น</div>
-        <div>• โปรเจกต์ท้าทาย</div>
+      <div class="row" style="justify-content: space-between;">
+        <div>
+          <span class="pill">ตำแหน่งว่าง</span>
+          <div class="muted hint" style="margin-top:6px;">
+            ดึงข้อมูลจากไฟล์ <b>jobs.csv</b> ใน GitHub repo
+          </div>
+        </div>
+        <button class="btn primary" onclick="document.getElementById('apply').scrollIntoView({behavior:'smooth'})">
+          สมัครงาน
+        </button>
+      </div>
+
+      <div class="row" style="margin-top:14px;">
+        <input id="q" type="search" placeholder="ค้นหา (ตำแหน่ง/สาขา/จังหวัด)..." style="flex:1; min-width: 240px;" />
+        <select id="filterArea" style="min-width: 180px;">
+          <option value="">ทุกพื้นที่</option>
+        </select>
+        <select id="filterProvince" style="min-width: 180px;">
+          <option value="">ทุกจังหวัด</option>
+        </select>
+        <button class="btn ghost" id="clearBtn">ล้างตัวกรอง</button>
       </div>
     </section>
 
     <section class="card">
-      <span class="pill">ตำแหน่งงานที่เปิดรับ</span>
-      <div class="grid" style="margin-top:14px;">
-        <div>Software Engineer</div>
-        <div>Sales / BD</div>
-        <div>Marketing</div>
-        <div>Operations</div>
+      <div class="row" style="justify-content: space-between;">
+        <div class="muted" id="summary">กำลังโหลดข้อมูล...</div>
       </div>
+
+      <div id="jobs" class="grid" style="margin-top:12px;"></div>
+
+      <div id="msg" style="margin-top:12px;"></div>
     </section>
 
     <section class="card" id="apply">
       <span class="pill">สมัครงาน</span>
-      <p style="margin:12px 0 16px;">กรอกฟอร์มด้านล่างได้เลย</p>
-      <iframe src="PASTE_YOUR_FORM_EMBED_URL_HERE" allowfullscreen></iframe>
+      <p class="muted" style="margin:10px 0 14px;">กรอกแบบฟอร์มด้านล่างได้เลย</p>
+
+      <!-- Microsoft Form ของคุณ -->
+      <iframe
+        src="https://forms.office.com/r/wabJfczd4Z"
+        allowfullscreen
+        loading="lazy">
+      </iframe>
     </section>
 
     <footer>© Careers page</footer>
   </main>
+
+<script>
+  // ====== CONFIG ======
+  const CSV_URL = "./jobs.csv"; // วาง jobs.csv ไว้ที่ root ของ repo (ระดับเดียวกับ index.html)
+  // ====================
+
+  // CSV parser แบบเบาๆ รองรับ comma + quoted fields พื้นฐาน
+  function parseCSV(text) {
+    const rows = [];
+    let row = [];
+    let cur = "";
+    let inQuotes = false;
+
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      const next = text[i + 1];
+
+      if (ch === '"' ) {
+        if (inQuotes && next === '"') { // escaped quote
+          cur += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+        continue;
+      }
+
+      if (!inQuotes && ch === ',') {
+        row.push(cur.trim());
+        cur = "";
+        continue;
+      }
+
+      if (!inQuotes && (ch === '\n' || ch === '\r')) {
+        if (ch === '\r' && next === '\n') i++;
+        row.push(cur.trim());
+        cur = "";
+        if (row.some(v => v.length > 0)) rows.push(row);
+        row = [];
+        continue;
+      }
+
+      cur += ch;
+    }
+
+    if (cur.length || row.length) {
+      row.push(cur.trim());
+      if (row.some(v => v.length > 0)) rows.push(row);
+    }
+
+    return rows;
+  }
+
+  // map header names -> indices
+  function headerIndex(headers) {
+    const norm = s => (s || "").toLowerCase().replace(/\s+/g,'').replace(/[_-]/g,'');
+    const map = {};
+    headers.forEach((h, i) => { map[norm(h)] = i; });
+
+    // รองรับชื่อคอลัมน์หลายแบบ
+    const pick = (cands) => {
+      for (const c of cands) {
+        const k = norm(c);
+        if (k in map) return map[k];
+      }
+      return -1;
+    };
+
+    return {
+      position: pick(["position","ตำแหน่ง","jobtitle","title"]),
+      branch:   pick(["branch","สาขา","store","location"]),
+      province: pick(["province","จังหวัด"]),
+      area:     pick(["area","ภูมิภาค","ภาค","region"]),
+      count:    pick(["count","จำนวน","vacancy","openings"]),
+      note:     pick(["note","หมายเหตุ","detail","details","description","คำอธิบาย"]),
+    };
+  }
+
+  function escapeHtml(s) {
+    return (s ?? "").toString()
+      .replaceAll("&","&amp;").replaceAll("<","&lt;")
+      .replaceAll(">","&gt;").replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
+
+  function uniqSorted(arr) {
+    return [...new Set(arr.filter(Boolean))].sort((a,b) => a.localeCompare(b, "th"));
+  }
+
+  let allJobs = [];
+
+  function render() {
+    const q = document.getElementById("q").value.trim().toLowerCase();
+    const area = document.getElementById("filterArea").value;
+    const province = document.getElementById("filterProvince").value;
+
+    const filtered = allJobs.filter(j => {
+      const hay = `${j.position} ${j.branch} ${j.province} ${j.area} ${j.note}`.toLowerCase();
+      const okQ = !q || hay.includes(q);
+      const okA = !area || j.area === area;
+      const okP = !province || j.province === province;
+      return okQ && okA && okP;
+    });
+
+    const jobsEl = document.getElementById("jobs");
+    jobsEl.innerHTML = filtered.map(j => `
+      <div class="job">
+        <h3>${escapeHtml(j.position || "ไม่ระบุตำแหน่ง")}</h3>
+        <p class="meta">
+          ${j.branch ? `<div><b>สาขา:</b> ${escapeHtml(j.branch)}</div>` : ""}
+          ${j.province ? `<div><b>จังหวัด:</b> ${escapeHtml(j.province)}</div>` : ""}
+          ${j.area ? `<div><b>พื้นที่:</b> ${escapeHtml(j.area)}</div>` : ""}
+          ${j.count ? `<div><b>จำนวน:</b> ${escapeHtml(j.count)}</div>` : ""}
+        </p>
+        ${j.note ? `<div class="muted hint">${escapeHtml(j.note)}</div>` : ""}
+        <div style="margin-top:12px;">
+          <button class="btn primary" onclick="document.getElementById('apply').scrollIntoView({behavior:'smooth'})">
+            สมัครตำแหน่งนี้
+          </button>
+        </div>
+      </div>
+    `).join("");
+
+    document.getElementById("summary").textContent =
+      `พบ ${filtered.length} ตำแหน่ง (จากทั้งหมด ${allJobs.length})`;
+
+    const msg = document.getElementById("msg");
+    msg.innerHTML = filtered.length ? "" : `<div class="error">ไม่พบตำแหน่งที่ตรงกับตัวกรอง ลองเปลี่ยนคำค้น/ตัวกรองดูครับ</div>`;
+  }
+
+  async function loadJobs() {
+    const msg = document.getElementById("msg");
+    try {
+      const res = await fetch(CSV_URL, { cache: "no-store" });
+      if (!res.ok) throw new Error(`โหลด ${CSV_URL} ไม่ได้ (HTTP ${res.status})`);
+      const text = await res.text();
+
+      const rows = parseCSV(text);
+      if (!rows.length) throw new Error("ไฟล์ CSV ว่าง หรือรูปแบบไม่ถูกต้อง");
+
+      const headers = rows[0];
+      const idx = headerIndex(headers);
+
+      if (idx.position === -1 && idx.branch === -1 && idx.province === -1) {
+        throw new Error("ไม่พบคอลัมน์หลัก (Position/Branch/Province) ใน CSV — ตรวจ header แถวแรกอีกครั้ง");
+      }
+
+      allJobs = rows.slice(1).map(r => ({
+        position: idx.position >= 0 ? (r[idx.position] || "") : "",
+        branch:   idx.branch   >= 0 ? (r[idx.branch]   || "") : "",
+        province: idx.province >= 0 ? (r[idx.province] || "") : "",
+        area:     idx.area     >= 0 ? (r[idx.area]     || "") : "",
+        count:    idx.count    >= 0 ? (r[idx.count]    || "") : "",
+        note:     idx.note     >= 0 ? (r[idx.note]     || "") : "",
+      })).filter(j => (j.position || j.branch || j.province || j.area || j.note));
+
+      // เติมตัวกรอง
+      const areas = uniqSorted(allJobs.map(j => j.area));
+      const provinces = uniqSorted(allJobs.map(j => j.province));
+
+      const areaSel = document.getElementById("filterArea");
+      areas.forEach(a => {
+        const opt = document.createElement("option");
+        opt.value = a; opt.textContent = a;
+        areaSel.appendChild(opt);
+      });
+
+      const provSel = document.getElementById("filterProvince");
+      provinces.forEach(p => {
+        const opt = document.createElement("option");
+        opt.value = p; opt.textContent = p;
+        provSel.appendChild(opt);
+      });
+
+      msg.innerHTML = "";
+      render();
+    } catch (e) {
+      console.error(e);
+      msg.innerHTML = `<div class="error"><b>โหลดข้อมูลตำแหน่งไม่สำเร็จ</b><div class="hint" style="margin-top:6px;">${escapeHtml(e.message)}</div>
+      <div class="hint" style="margin-top:10px;">
+        เช็กว่าได้อัปโหลด <b>jobs.csv</b> ไว้ที่ root ของ repo แล้ว และชื่อคอลัมน์แถวแรกถูกต้อง
+      </div></div>`;
+      document.getElementById("summary").textContent = "โหลดข้อมูลไม่สำเร็จ";
+      document.getElementById("jobs").innerHTML = "";
+    }
+  }
+
+  // events
+  document.getElementById("q").addEventListener("input", render);
+  document.getElementById("filterArea").addEventListener("change", render);
+  document.getElementById("filterProvince").addEventListener("change", render);
+  document.getElementById("clearBtn").addEventListener("click", () => {
+    document.getElementById("q").value = "";
+    document.getElementById("filterArea").value = "";
+    document.getElementById("filterProvince").value = "";
+    render();
+  });
+
+  loadJobs();
+</script>
 </body>
 </html>
