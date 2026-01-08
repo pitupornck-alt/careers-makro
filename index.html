@@ -12,8 +12,8 @@
     header .wrap { max-width: var(--max); margin:auto; }
     header h1 { margin:0 0 8px; font-size:40px; }
     header p { margin:0; font-size:18px; opacity:.95; }
-    main { max-width: var(--max); margin:auto; padding:24px 18px 60px; }
 
+    main { max-width: var(--max); margin:auto; padding:24px 18px 60px; }
     .card { background:#fff; border-radius:16px; padding:18px; box-shadow:0 10px 28px rgba(0,0,0,.08); margin-bottom:16px; }
     .row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
     .pill { background:#eef2ff; color:#3730a3; font-weight:700; font-size:13px; padding:6px 12px; border-radius:999px; }
@@ -25,11 +25,22 @@
     .btn.primary { background:#111827; color:#fff; }
     .btn.ghost { background:#eef2ff; color:#3730a3; }
 
-    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px; margin-top:12px; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px; margin-top:12px; }
     .job { border:1px solid rgba(0,0,0,.1); border-radius:14px; padding:14px; }
     .job h3 { margin:0 0 6px; font-size:18px; }
-    .meta { font-size:13px; opacity:.85; }
+    .meta { font-size:13px; opacity:.9; }
     .meta div { margin:2px 0; }
+
+    .badge {
+      display:inline-block;
+      font-size:12px;
+      font-weight:700;
+      padding:4px 10px;
+      border-radius:999px;
+      background:#f3f4f6;
+      color:#111827;
+      margin-top:8px;
+    }
 
     .ok { background:#ecfeff; border:1px solid rgba(8,145,178,.25); color:#155e75; padding:12px; border-radius:12px; margin-top:12px; }
     .error { background:#fff1f2; border:1px solid rgba(190,18,60,.25); color:#9f1239; padding:12px; border-radius:12px; margin-top:12px; }
@@ -52,7 +63,7 @@
     <div class="row" style="justify-content:space-between">
       <div>
         <span class="pill">ตำแหน่งว่าง</span>
-        <div class="muted hint">ดึงข้อมูลจากไฟล์ CSV ใน GitHub</div>
+        <div class="muted hint">ดึงข้อมูลจากไฟล์ CSV/TSV ใน GitHub</div>
       </div>
       <button class="btn primary" onclick="document.getElementById('apply').scrollIntoView({behavior:'smooth'})">
         สมัครงาน
@@ -60,9 +71,9 @@
     </div>
 
     <div class="row" style="margin-top:12px">
-      <input id="q" placeholder="ค้นหา (ตำแหน่ง/สาขา/จังหวัด)..." style="flex:1;min-width:240px">
-      <select id="filterArea"><option value="">ทุกพื้นที่</option></select>
-      <select id="filterProvince"><option value="">ทุกจังหวัด</option></select>
+      <input id="q" placeholder="ค้นหา (ตำแหน่ง/สาขา/รหัสสาขา/สถานะ)..." style="flex:1;min-width:240px">
+      <select id="filterStatus"><option value="">ทุกสถานะ</option></select>
+      <select id="filterBranch"><option value="">ทุกสาขา</option></select>
       <button class="btn ghost" id="clearBtn">ล้างตัวกรอง</button>
     </div>
   </section>
@@ -71,8 +82,6 @@
     <div id="summary" class="muted">กำลังโหลดข้อมูล...</div>
     <div id="jobs" class="grid"></div>
     <div id="msg"></div>
-
-    <!-- DEBUG -->
     <div id="debug" class="muted hint" style="margin-top:10px;"></div>
   </section>
 
@@ -96,14 +105,20 @@ const norm = s => (s||"")
   .replace(/[_-]/g,"");
 
 function detectDelimiter(text) {
-  // ดูจากบรรทัดแรก (header) ว่า , หรือ ; อันไหนเยอะกว่า
+  // ใช้บรรทัดแรก (header) นับจำนวนตัวคั่นที่เป็นไปได้: tab, comma, semicolon
   const firstLine = (text.split(/\r?\n/)[0] || "");
-  const comma = (firstLine.match(/,/g) || []).length;
-  const semi  = (firstLine.match(/;/g) || []).length;
-  return semi > comma ? ";" : ",";
+  const tab   = (firstLine.match(/\t/g) || []).length;
+  const comma = (firstLine.match(/,/g)  || []).length;
+  const semi  = (firstLine.match(/;/g)  || []).length;
+
+  // เลือกตัวที่มีจำนวนมากสุด
+  if (tab >= comma && tab >= semi && tab > 0) return "\t";
+  if (semi > comma) return ";";
+  return ",";
 }
 
-function parseCSV(text, delimiter) {
+function parseDelimited(text, delimiter) {
+  // Parser แบบรองรับ quoted fields พื้นฐาน ใช้ได้กับ , ; และ \t
   const rows = [];
   let row=[], cur="", inQ=false;
 
@@ -132,14 +147,12 @@ function parseCSV(text, delimiter) {
     row.push(cur.trim());
     if (row.some(v=>v.length>0)) rows.push(row);
   }
-
   return rows;
 }
 
 function headerIndex(headers) {
   const map={};
   headers.forEach((h,i)=>map[norm(h)]=i);
-
   const pick = arr => {
     for (const a of arr) {
       const k = norm(a);
@@ -148,87 +161,90 @@ function headerIndex(headers) {
     return -1;
   };
 
+  // *** MAP ตาม header ของคุณ + เผื่อชื่อใกล้เคียง ***
   return {
-    position: pick(["position","jobtitle","jobname","title","ตำแหน่ง","ตำแหน่งงาน","ชื่อตำแหน่ง"]),
-    branch:   pick(["branch","branchname","store","storename","location","สาขา","ชื่อสาขา"]),
-    province: pick(["province","provincename","จังหวัด","ชื่อจังหวัด"]),
-    area:     pick(["area","region","ภาค","ภูมิภาค","เขต","cluster"]),
-    count:    pick(["count","vacancy","openings","จำนวน","อัตรา","อัตราว่าง"]),
-    note:     pick(["note","detail","details","description","หมายเหตุ","รายละเอียด","คุณสมบัติ"]),
+    branchCode: pick(["รหัสสาขา","branchcode","storecode","code"]),
+    branchName: pick(["ชื่อสาขา","branchname","storename","branch","สาขา"]),
+    jobTitle:   pick(["ตำแหน่งงาน","position","jobtitle","jobname","ตำแหน่ง","ตำแหน่งที่รับสมัคร"]),
+    jobStatus:  pick(["สถานะตำแหน่งงาน","status","jobstatus","สถานะ"]),
+    recruitPos: pick(["ตำแหน่งที่รับสมัคร","recruitposition","applyfor","ตำแหน่งรับสมัคร","ตำแหน่งสมัคร"]),
   };
 }
 
-const uniq = a => [...new Set(a.filter(Boolean))].sort((x,y)=>x.localeCompare(y,"th"));
+function uniq(arr) {
+  return [...new Set(arr.filter(Boolean))].sort((a,b)=>a.localeCompare(b,"th"));
+}
 
-let allJobs=[];
+let allRows = [];
 
 function render() {
-  const qv=q.value.toLowerCase().trim();
-  const av=filterArea.value, pv=filterProvince.value;
+  const qv = q.value.toLowerCase().trim();
+  const sv = filterStatus.value;
+  const bv = filterBranch.value;
 
-  const list = allJobs.filter(j=>{
-    const h = `${j.position} ${j.branch} ${j.province} ${j.area} ${j.note}`.toLowerCase();
-    return (!qv || h.includes(qv)) && (!av || j.area===av) && (!pv || j.province===pv);
+  const list = allRows.filter(r=>{
+    const hay = `${r.branchCode} ${r.branchName} ${r.jobTitle} ${r.jobStatus} ${r.recruitPos}`.toLowerCase();
+    const okQ = !qv || hay.includes(qv);
+    const okS = !sv || r.jobStatus === sv;
+    const okB = !bv || r.branchName === bv;
+    return okQ && okS && okB;
   });
 
-  summary.textContent = `พบ ${list.length} ตำแหน่ง (จากทั้งหมด ${allJobs.length})`;
+  summary.textContent = `พบ ${list.length} ตำแหน่ง (จากทั้งหมด ${allRows.length})`;
 
-  jobs.innerHTML = list.map(j=>`
+  jobs.innerHTML = list.map(r=>`
     <div class="job">
-      <h3>${j.position || "-"}</h3>
+      <h3>${r.jobTitle || r.recruitPos || "-"}</h3>
       <div class="meta">
-        ${j.branch?`<div>สาขา: ${j.branch}</div>`:""}
-        ${j.province?`<div>จังหวัด: ${j.province}</div>`:""}
-        ${j.area?`<div>พื้นที่: ${j.area}</div>`:""}
-        ${j.count?`<div>จำนวน: ${j.count}</div>`:""}
+        ${r.branchName ? `<div><b>สาขา:</b> ${r.branchName}</div>` : ""}
+        ${r.branchCode ? `<div><b>รหัสสาขา:</b> ${r.branchCode}</div>` : ""}
+        ${r.recruitPos ? `<div><b>ตำแหน่งที่รับสมัคร:</b> ${r.recruitPos}</div>` : ""}
       </div>
-      ${j.note?`<div class="muted hint">${j.note}</div>`:""}
-      <button class="btn primary" onclick="document.getElementById('apply').scrollIntoView({behavior:'smooth'})">
-        สมัครตำแหน่งนี้
-      </button>
+      ${r.jobStatus ? `<div class="badge">สถานะ: ${r.jobStatus}</div>` : ""}
+      <div style="margin-top:12px">
+        <button class="btn primary" onclick="document.getElementById('apply').scrollIntoView({behavior:'smooth'})">
+          สมัครตำแหน่งนี้
+        </button>
+      </div>
     </div>
   `).join("");
 }
 
-async function loadJobs() {
+async function loadData() {
   try {
     const res = await fetch(CSV_URL + "?ts=" + Date.now(), { cache:"no-store" });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
     const text = await res.text();
     const delimiter = detectDelimiter(text);
-    const rows = parseCSV(text, delimiter);
-
-    if (!rows.length) throw new Error("ไฟล์ CSV ว่าง หรืออ่านไม่ออก");
+    const rows = parseDelimited(text, delimiter);
+    if (!rows.length) throw new Error("ไฟล์ว่าง หรืออ่านไม่ออก");
 
     const headers = rows[0];
     const idx = headerIndex(headers);
 
-    // DEBUG แสดงหัวคอลัมน์ + delimiter + mapping
     debug.innerHTML =
-      `ไฟล์: <code>${CSV_FILE_NAME}</code> | ตัวคั่น: <code>${delimiter}</code><br>` +
+      `ไฟล์: <code>${CSV_FILE_NAME}</code> | ตัวคั่น: <code>${delimiter === "\t" ? "\\t (TAB)" : delimiter}</code><br>` +
       `หัวคอลัมน์ที่พบ: <code>${headers.join(" | ")}</code><br>` +
-      `mapping: position=${idx.position}, branch=${idx.branch}, province=${idx.province}, area=${idx.area}, count=${idx.count}, note=${idx.note}`;
+      `mapping: รหัสสาขา=${idx.branchCode}, ชื่อสาขา=${idx.branchName}, ตำแหน่งงาน=${idx.jobTitle}, สถานะ=${idx.jobStatus}, ตำแหน่งที่รับสมัคร=${idx.recruitPos}`;
 
-    // ถ้าจับไม่ได้เลย ให้แจ้งชัด ๆ
-    if (idx.position === -1 && idx.branch === -1 && idx.province === -1) {
-      throw new Error("โค้ดจับคอลัมน์หลักไม่เจอ (ตำแหน่ง/สาขา/จังหวัด) — ดูหัวคอลัมน์จาก Debug แล้วแจ้งผมได้");
+    if (idx.branchName === -1 && idx.jobTitle === -1 && idx.recruitPos === -1) {
+      throw new Error("จับคอลัมน์หลักไม่เจอ (ชื่อสาขา/ตำแหน่งงาน/ตำแหน่งที่รับสมัคร) — ดูหัวคอลัมน์จาก Debug แล้วแจ้งผมได้");
     }
 
-    allJobs = rows.slice(1).map(r=>({
-      position: idx.position>=0 ? (r[idx.position]||"") : "",
-      branch:   idx.branch>=0   ? (r[idx.branch]||"")   : "",
-      province: idx.province>=0 ? (r[idx.province]||"") : "",
-      area:     idx.area>=0     ? (r[idx.area]||"")     : "",
-      count:    idx.count>=0    ? (r[idx.count]||"")    : "",
-      note:     idx.note>=0     ? (r[idx.note]||"")     : "",
-    })).filter(j => (j.position || j.branch || j.province || j.area || j.note || j.count));
+    allRows = rows.slice(1).map(r=>({
+      branchCode: idx.branchCode>=0 ? (r[idx.branchCode]||"") : "",
+      branchName: idx.branchName>=0 ? (r[idx.branchName]||"") : "",
+      jobTitle:   idx.jobTitle>=0   ? (r[idx.jobTitle]||"")   : "",
+      jobStatus:  idx.jobStatus>=0  ? (r[idx.jobStatus]||"")  : "",
+      recruitPos: idx.recruitPos>=0 ? (r[idx.recruitPos]||"") : "",
+    })).filter(x => x.branchName || x.jobTitle || x.recruitPos || x.jobStatus || x.branchCode);
 
     // เติมตัวกรอง
-    filterArea.innerHTML = `<option value="">ทุกพื้นที่</option>`;
-    filterProvince.innerHTML = `<option value="">ทุกจังหวัด</option>`;
-    uniq(allJobs.map(j=>j.area)).forEach(v=>filterArea.insertAdjacentHTML("beforeend",`<option>${v}</option>`));
-    uniq(allJobs.map(j=>j.province)).forEach(v=>filterProvince.insertAdjacentHTML("beforeend",`<option>${v}</option>`));
+    filterStatus.innerHTML = `<option value="">ทุกสถานะ</option>`;
+    filterBranch.innerHTML = `<option value="">ทุกสาขา</option>`;
+    uniq(allRows.map(r=>r.jobStatus)).forEach(v=>filterStatus.insertAdjacentHTML("beforeend", `<option>${v}</option>`));
+    uniq(allRows.map(r=>r.branchName)).forEach(v=>filterBranch.insertAdjacentHTML("beforeend", `<option>${v}</option>`));
 
     msg.innerHTML = `<div class="ok">โหลดข้อมูลตำแหน่งสำเร็จ</div>`;
     render();
@@ -236,23 +252,17 @@ async function loadJobs() {
     console.error(e);
     summary.textContent = "โหลดข้อมูลไม่สำเร็จ";
     jobs.innerHTML = "";
-    msg.innerHTML = `
-      <div class="error">
-        <b>โหลดข้อมูลจาก CSV ไม่สำเร็จ</b><br>
-        <span class="hint">${e.message || e}</span><br><br>
-        <span class="hint">เช็กว่าเปิดไฟล์ได้: <code>.../${CSV_FILE_NAME}</code></span>
-      </div>
-    `;
+    msg.innerHTML = `<div class="error"><b>โหลดข้อมูลจากไฟล์ไม่สำเร็จ</b><br><span class="hint">${e.message || e}</span></div>`;
   }
 }
 
 /* ================= EVENTS ================= */
 q.oninput = render;
-filterArea.onchange = render;
-filterProvince.onchange = render;
-clearBtn.onclick = ()=>{ q.value=""; filterArea.value=""; filterProvince.value=""; render(); };
+filterStatus.onchange = render;
+filterBranch.onchange = render;
+clearBtn.onclick = ()=>{ q.value=""; filterStatus.value=""; filterBranch.value=""; render(); };
 
-loadJobs();
+loadData();
 </script>
 
 </body>
