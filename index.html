@@ -49,7 +49,7 @@
         <span class="pill">ตำแหน่งว่าง</span>
         <div class="muted">แสดงเฉพาะตำแหน่งที่สถานะเป็น Open</div>
       </div>
-      <button class="btn primary" onclick="document.getElementById('apply').scrollIntoView({behavior:'smooth'})">
+      <button class="btn primary" id="goApplyBtn">
         สมัครงาน
       </button>
     </div>
@@ -84,7 +84,21 @@ const FORM_BASE = "https://forms.office.com/r/wabJfczd4Z";
 const FORM_FIELD_POSITION = "entry.111111111"; // ตำแหน่งที่รับสมัคร
 const FORM_FIELD_BRANCH   = "entry.222222222"; // ชื่อสาขา
 
+/* ================= DOM (อย่าอาศัย id เป็น global) ================= */
+const elQ = document.getElementById("q");
+const elFilterBranch = document.getElementById("filterBranch");
+const elClearBtn = document.getElementById("clearBtn");
+const elSummary = document.getElementById("summary");
+const elJobs = document.getElementById("jobs");
+const elApplyFrame = document.getElementById("applyFrame");
+const elGoApplyBtn = document.getElementById("goApplyBtn");
+
 /* ================= CSV/TSV Parser ================= */
+function stripBom(text) {
+  if (!text) return text;
+  return text.charCodeAt(0) === 0xFEFF ? text.slice(1) : text;
+}
+
 function detectDelimiter(text) {
   const first = (text.split(/\r?\n/)[0] || "");
   const tab = (first.match(/\t/g) || []).length;
@@ -97,6 +111,8 @@ function detectDelimiter(text) {
 }
 
 function parseDelimited(text, delimiter) {
+  text = stripBom(text);
+
   const rows = [];
   let row = [], cur = "", inQuotes = false;
 
@@ -137,6 +153,7 @@ function parseDelimited(text, delimiter) {
 
 /* ================= Header Mapping ================= */
 const norm = s => (s || "")
+  .toString()
   .toLowerCase()
   .replace(/\uFEFF/g, "")   // BOM
   .replace(/\s+/g, "");     // remove spaces
@@ -154,8 +171,9 @@ function headerIndex(headers) {
   };
 
   return {
-    branchName: pick(["ชื่อสาขา","สาขา","branchname","storename"]),
-    recruitPos: pick(["ตำแหน่งที่รับสมัคร","ตำแหน่งรับสมัคร","recruitposition","applyfor"]),
+    // รองรับทั้งไทย + อังกฤษ (ตรงกับไฟล์คุณ: branchName,recruitPos,jobStatus)
+    branchName: pick(["ชื่อสาขา","สาขา","branchname","branch","storename","store"]),
+    recruitPos: pick(["ตำแหน่งที่รับสมัคร","ตำแหน่งรับสมัคร","recruitpos","recruitposition","applyfor","position","jobtitle"]),
     jobStatus:  pick(["สถานะตำแหน่งงาน","สถานะ","jobstatus","status"])
   };
 }
@@ -168,17 +186,17 @@ function uniq(arr) {
 let all = []; // already filtered to Open
 
 function render() {
-  const qv = q.value.toLowerCase().trim();
-  const bv = filterBranch.value;
+  const qv = elQ.value.toLowerCase().trim();
+  const bv = elFilterBranch.value;
 
   const list = all.filter(x => {
     const hay = `${x.branchName} ${x.recruitPos}`.toLowerCase();
     return (!qv || hay.includes(qv)) && (!bv || x.branchName === bv);
   });
 
-  summary.textContent = `พบ ${list.length} ตำแหน่ง (จากทั้งหมด ${all.length})`;
+  elSummary.textContent = `พบ ${list.length} ตำแหน่ง (จากทั้งหมด ${all.length})`;
 
-  jobs.innerHTML = list.map(x => `
+  elJobs.innerHTML = list.map(x => `
     <div class="job">
       <h3>${escapeHtml(x.recruitPos || "-")}</h3>
       <div class="meta">
@@ -213,7 +231,7 @@ function applyJob(position, branch) {
     FORM_FIELD_POSITION + "=" + encodeURIComponent(position) + "&" +
     FORM_FIELD_BRANCH   + "=" + encodeURIComponent(branch);
 
-  applyFrame.src = url;
+  elApplyFrame.src = url;
   document.getElementById("apply").scrollIntoView({behavior:"smooth"});
 }
 
@@ -227,6 +245,11 @@ async function loadData() {
   if (!rows.length) throw new Error("ไฟล์ว่าง หรืออ่านไม่ออก");
 
   const idx = headerIndex(rows[0]);
+
+  // debug ช่วยดูทันทีว่าอ่าน header เป็นอะไร
+  console.log("CSV headers:", rows[0]);
+  console.log("header index:", idx);
+
   if (idx.branchName === -1 || idx.recruitPos === -1 || idx.jobStatus === -1) {
     throw new Error("ไม่พบคอลัมน์ที่ต้องใช้ (ชื่อสาขา / ตำแหน่งที่รับสมัคร / สถานะตำแหน่งงาน)");
   }
@@ -241,30 +264,33 @@ async function loadData() {
   .filter(x => (x.jobStatus || "").trim().toLowerCase() === "open");
 
   // เติม dropdown สาขาจากรายการ Open เท่านั้น
-  filterBranch.innerHTML = `<option value="">ทุกสาขา</option>`;
+  elFilterBranch.innerHTML = `<option value="">ทุกสาขา</option>`;
   uniq(all.map(x => x.branchName)).forEach(b => {
     const opt = document.createElement("option");
     opt.value = b;
     opt.textContent = b;
-    filterBranch.appendChild(opt);
+    elFilterBranch.appendChild(opt);
   });
 
   render();
 }
 
 /* ================= Events ================= */
-q.addEventListener("input", render);
-filterBranch.addEventListener("change", render);
-clearBtn.addEventListener("click", () => {
-  q.value = "";
-  filterBranch.value = "";
+elGoApplyBtn.addEventListener("click", () => {
+  document.getElementById("apply").scrollIntoView({behavior:"smooth"});
+});
+elQ.addEventListener("input", render);
+elFilterBranch.addEventListener("change", render);
+elClearBtn.addEventListener("click", () => {
+  elQ.value = "";
+  elFilterBranch.value = "";
   render();
 });
 
 loadData().catch(err => {
   console.error(err);
-  summary.textContent = "โหลดข้อมูลไม่สำเร็จ";
-  jobs.innerHTML = `<div class="job"><b>เกิดข้อผิดพลาด:</b> ${escapeHtml(err.message || err)}</div>`;
+  elSummary.textContent = "โหลดข้อมูลไม่สำเร็จ";
+  elJobs.innerHTML = `<div class="job"><b>เกิดข้อผิดพลาด:</b> ${escapeHtml(err.message || err)}</div>`;
 });
 </script>
 
