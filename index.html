@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ร่วมงานกับเรา</title>
+  <title>ร่วมงานกับเรา | Vacancy Post</title>
 
   <style>
     :root { --max: 1100px; }
@@ -75,7 +75,7 @@
 
 <script>
 /* ================= CONFIG ================= */
-const CSV_URL = "./" + encodeURI("ประกาศตำแหน่งงานว่างสาขา.csv");
+const CSV_URL = "./" + encodeURI("Vacancy Post.csv");
 
 // Microsoft Form base
 const FORM_BASE = "https://forms.office.com/r/wabJfczd4Z";
@@ -172,9 +172,9 @@ function headerIndex(headers) {
 
   return {
     // รองรับทั้งไทย + อังกฤษ (ตรงกับไฟล์คุณ: branchName,recruitPos,jobStatus)
-    branchName: pick(["ชื่อสาขา","สาขา","branchname","branch","storename","store"]),
-    recruitPos: pick(["ตำแหน่งที่รับสมัคร","ตำแหน่งรับสมัคร","recruitpos","recruitposition","applyfor","position","jobtitle"]),
-    jobStatus:  pick(["สถานะตำแหน่งงาน","สถานะ","jobstatus","status"])
+    branchName: pick(["ชื่อสาขา","สาขา","branchname","branch","storename","store","branch name","branch_name","store name","location","สาขาชื่อ","ชื่อสาขา(ไทย)","branch_name_th"]),
+    recruitPos: pick(["ตำแหน่งที่รับสมัคร","ตำแหน่งรับสมัคร","recruitpos","recruitposition","applyfor","position","jobtitle","positionname","position name","jobtitle","job title","ตำแหน่ง","ตำแหน่งงาน","ตำแหน่งงานที่รับสมัคร","position_th"]),
+    jobStatus:  pick(["สถานะตำแหน่งงาน","สถานะ","jobstatus","status","job status","job_status","สถานะ","สถานะงาน","เปิดรับ","open/close","เปิดรับสมัคร"])
   };
 }
 
