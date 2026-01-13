@@ -9,26 +9,29 @@
     :root { --max: 1100px; }
     body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background:#f6f7fb; color:#111; }
     
-    /* === ปรับแก้ Header ให้รองรับ Logo === */
-    header { padding:40px 18px; color:#fff; background: linear-gradient(120deg, #4f46e5, #6366f1); }
+    /* === ปรับแก้ Header === */
+    /* ปรับสีเป็น Gradient โทนแดง (Makro) เพื่อให้ Logo บนพื้นขาวดูเด่น */
+    header { padding:40px 18px; color:#fff; background: linear-gradient(120deg, #dc2626, #ef4444); }
+    
     header .wrap { 
       max-width: var(--max); 
       margin:auto; 
-      display: flex; /* จัดเรียงแนวนอน */
+      display: flex; 
       align-items: center; 
       gap: 24px; 
+      justify-content: space-between; /* ดันเนื้อหาให้ห่างกัน */
     }
     
-    /* สไตล์รูป Logo */
+    /* สไตล์รูป Logo (พื้นหลังขาว) */
     header .logo {
-      width: 100px;         /* ขนาดความกว้างโลโก้ */
-      height: 100px;        /* ขนาดความสูงโลโก้ */
-      object-fit: contain;  /* ให้ภาพพอดีกรอบไม่เบี้ยว */
+      width: 120px;         /* ปรับขนาดให้ใหญ่ขึ้นเล็กน้อยสำหรับ SVG */
+      height: 120px;
+      object-fit: contain;
       background: #fff;     /* พื้นหลังสีขาว */
-      border-radius: 16px;  /* มุมโค้ง */
-      padding: 12px;        /* ระยะห่างขอบ */
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15); /* เงา */
-      flex-shrink: 0;       /* ห้ามหดตัว */
+      border-radius: 16px;
+      padding: 16px;        /* เพิ่มระยะขอบภายใน */
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      flex-shrink: 0;
     }
 
     header .header-text { flex: 1; }
@@ -37,9 +40,10 @@
 
     /* ปรับแต่งสำหรับมือถือ (Mobile) */
     @media (max-width: 600px) {
-      header .wrap { flex-direction: column; text-align: center; gap: 16px; }
+      /* ใช้ column-reverse เพื่อให้ Logo (ตัวที่ 2 ใน HTML) เด้งไปอยู่บนสุด */
+      header .wrap { flex-direction: column-reverse; text-align: center; gap: 16px; }
       header h1 { font-size: 32px; }
-      header .logo { width: 80px; height: 80px; }
+      header .logo { width: 90px; height: 90px; }
     }
     /* ================================== */
 
@@ -56,19 +60,18 @@
 
     .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:12px; margin-top:12px; }
     .job { border:1px solid rgba(0,0,0,.1); border-radius:14px; padding:16px; background:#fff; transition: transform 0.2s; }
-    .job:hover { transform: translateY(-2px); border-color: #4f46e5; }
+    .job:hover { transform: translateY(-2px); border-color: #dc2626; /* เปลี่ยนสี Border ตอน Hover เป็นแดง */ }
     .job h3 { margin:0 0 10px; font-size:18px; line-height:1.4; color: #111827; }
     .meta { font-size:13px; opacity:.9; color: #4b5563; }
     .meta div { margin:4px 0; display:flex; align-items:center; gap:6px; }
     
     .status-badge { display:inline-block; font-size:11px; padding:2px 8px; border-radius:4px; font-weight:bold; }
-    .status-open { background:#dcfce7; color:#166534; } /* เขียว */
-    .status-closed { background:#fee2e2; color:#991b1b; } /* แดง */
+    .status-open { background:#dcfce7; color:#166534; }
+    .status-closed { background:#fee2e2; color:#991b1b; }
 
     iframe { width:100%; height:800px; border:0; border-radius:16px; background:#fff; margin-top:12px; }
     
-    /* Loading Spinner */
-    .loader { border: 4px solid #f3f3f3; border-top: 4px solid #4f46e5; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 20px auto; }
+    .loader { border: 4px solid #f3f3f3; border-top: 4px solid #dc2626; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 20px auto; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
   </style>
 </head>
@@ -76,13 +79,19 @@
 <body>
 <header>
   <div class="wrap">
-    <!-- Logo จะถูกโหลดผ่าน JavaScript (ดูที่ส่วน CONFIG ด้านล่าง) -->
-    <img id="companyLogo" src="" class="logo" alt="Company Logo" onerror="this.style.display='none'">
-    
+    <!-- ส่วนข้อความ (ย้ายมาไว้ก่อน เพื่อให้อยู่ซ้าย) -->
     <div class="header-text">
       <h1>ร่วมงานกับเรา</h1>
       <p>ดูตำแหน่งว่าง และสมัครงานได้ทันที (ข้อมูลอัปเดตล่าสุด)</p>
     </div>
+
+    <!-- ส่วน Logo (ย้ายมาไว้หลัง เพื่อให้อยู่ขวา) -->
+    <img id="companyLogo" 
+         src="" 
+         class="logo" 
+         alt="Makro Logo" 
+         referrerpolicy="no-referrer"
+         onerror="this.style.display='none'">
   </div>
 </header>
 
@@ -122,13 +131,13 @@
 <script>
 /* ================= CONFIG (ตั้งค่าตรงนี้) ================= */
 
-// 1. ใส่ลิงก์ CSV จาก Google Sheet ที่ทำ Publish to Web แล้ว
+// 1. ใส่ลิงก์ CSV จาก Google Sheet
 const GOOGLE_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRNspwvCPUWv4QOCeQNiC30GdqHfOkPfKjCpy-aeE8lXx0jn2zRnGEbiQfoBWcEb5JBg4R6parrFJUr/pub?output=csv"; 
 
-// 2. ลิงก์รูปภาพ Logo (แปลงเป็น Direct Link แล้ว)
-const COMPANY_LOGO_URL = "https://drive.google.com/uc?export=view&id=1pqQfRUheY7IKegoQ1rk_bOxycMWGO6Em";
+// 2. ลิงก์รูปภาพ Logo (ใช้ไฟล์ SVG จาก CPAxtra)
+const COMPANY_LOGO_URL = "https://www.cpaxtra.com/storage/logo-makro.svg";
 
-// 3. Microsoft Form Link (ลิงก์ฟอร์มรับสมัครงาน)
+// 3. Microsoft Form Link
 const FORM_BASE_URL = "https://forms.office.com/r/wabJfczd4Z";
 
 // =========================================================
@@ -152,7 +161,7 @@ const elIframeContainer = document.getElementById("iframeContainer");
 window.onload = init;
 
 async function init() {
-  // ตั้งค่า Logo
+  // ตั้งค่า Logo ผ่าน JS
   if (COMPANY_LOGO_URL) {
     document.getElementById("companyLogo").src = COMPANY_LOGO_URL;
   }
@@ -176,28 +185,22 @@ async function loadData() {
   elJobs.innerHTML = "";
   
   try {
-    // ใช้ fetch ดึงข้อมูลจาก URL
     const response = await fetch(GOOGLE_SHEET_CSV_URL);
     
     if (!response.ok) throw new Error("ไม่สามารถดึงข้อมูลได้");
     
     const text = await response.text();
-    const data = parseCSV(text); // แปลง CSV เป็น Array
+    const data = parseCSV(text); 
 
-    // เก็บข้อมูลลงตัวแปร Global (สมมติลำดับคอลัมน์ตามไฟล์เดิมของคุณ)
-    // CSV เก่าของคุณ: Code, Branch, Position, Status, Description
     allJobs = data.map(row => ({
       code: row[0] || "",
       branch: row[1] || "",
       position: row[2] || "",
       status: row[3] || "Closed",
       desc: row[4] || ""
-    })).filter(job => job.position && job.branch); // กรองแถวว่างทิ้ง
+    })).filter(job => job.position && job.branch);
 
-    // สร้างตัวเลือกสาขา (Dropdown)
     updateBranchDropdown();
-    
-    // แสดงผล
     renderJobs();
     elStatus.textContent = `พบตำแหน่งงานว่าง ${allJobs.length} อัตรา (ดึงข้อมูลล่าสุดเมื่อ: ${new Date().toLocaleTimeString('th-TH')})`;
 
@@ -212,12 +215,11 @@ function renderJobs() {
   const searchText = elQ.value.toLowerCase();
   const branchFilter = elFilterBranch.value;
 
-  // กรองข้อมูล
   const filtered = allJobs.filter(job => {
     const matchSearch = job.position.toLowerCase().includes(searchText) || 
                         job.branch.toLowerCase().includes(searchText);
     const matchBranch = branchFilter === "" || job.branch === branchFilter;
-    const matchStatus = job.status.toLowerCase().trim() === "open"; // แสดงเฉพาะ Open
+    const matchStatus = job.status.toLowerCase().trim() === "open";
 
     return matchSearch && matchBranch && matchStatus;
   });
@@ -229,7 +231,6 @@ function renderJobs() {
     return;
   }
 
-  // สร้าง HTML ทีละการ์ด
   filtered.forEach(job => {
     const card = document.createElement("div");
     card.className = "job";
@@ -255,20 +256,15 @@ function renderJobs() {
 window.openApplyForm = function(position, branch) {
   elApplySection.style.display = "block";
   elApplyPositionName.textContent = `${position} (${branch})`;
-  
-  // Scroll ไปที่ฟอร์ม
   elApplySection.scrollIntoView({ behavior: "smooth" });
 
   const finalUrl = FORM_BASE_URL; 
-  
-  // รีโหลด iframe
   elIframeContainer.innerHTML = `<iframe src="${finalUrl}" allowfullscreen></iframe>`;
 }
 
 /* ฟังก์ชันอัปเดต Dropdown สาขา */
 function updateBranchDropdown() {
   const branches = [...new Set(allJobs.map(j => j.branch))].sort();
-  // เก็บค่าที่เลือกปัจจุบันไว้
   const currentVal = elFilterBranch.value;
   
   elFilterBranch.innerHTML = '<option value="">ทุกสาขา</option>';
@@ -279,24 +275,20 @@ function updateBranchDropdown() {
     elFilterBranch.appendChild(opt);
   });
   
-  // คืนค่าเดิมถ้ายังมีอยู่
   if (branches.includes(currentVal)) elFilterBranch.value = currentVal;
 }
 
-/* ฟังก์ชันแปลง CSV เป็น Array (รองรับ Google Sheets) */
+/* ฟังก์ชันแปลง CSV */
 function parseCSV(text) {
   const lines = text.split(/\r?\n/);
   const result = [];
   
-  for (let i = 1; i < lines.length; i++) { // ข้าม Header บรรทัดแรก (i=1)
+  for (let i = 1; i < lines.length; i++) { 
     if (!lines[i].trim()) continue;
     
     const row = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
-    
-    // ถ้า regex พลาด (เช่นกรณีข้อมูลภาษาไทยยาวๆ) ให้ใช้ split ธรรมดาแทน
     const fallbackRow = lines[i].split(',');
     
-    // คลีนข้อมูล (ลบ Quote)
     const cleanRow = (row || fallbackRow).map(col => 
       col.replace(/^"|"$/g, '').replace(/""/g, '"').trim()
     );
